@@ -1,0 +1,13 @@
+[Unit]
+Description= server daemon
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/sshd -D $OPTIONS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

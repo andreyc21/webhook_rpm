@@ -1,0 +1,48 @@
+name: Build WebHook RPM
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Latest version
+      id: version
+      run: |
+        latest_url=$(curl -Ls -o /dev/null -w %{url_effective}  https://github.com/adnanh/webhook/releases/latest)
+        echo "::set-output name=version::$(basename $latest_url)"
+    - name: Download
+      run: |
+        mkdir -p ~/rpmbuild/SOURCES
+        curl -L https://github.com/adnanh/webhook/releases/download/${{ steps.version.outputs.version }}/webhook-linux-amd64.tar.gz  | tar -C ~/rpmbuild/SOURCES --strip-components 1 -xzpvf -
+    - name: install rpm
+      run: sudo apt-get install -y rpm
+    - name: Copy Files
+      run: cp webhook.service ~/rpmbuild/SOURCES
+    - name: Build RPM
+      run: rpmbuild -ba webhook.spec --define "version ${{ steps.version.outputs.version }}"
+    - name: RPM package name
+      id: artifacts
+      run: |
+        echo "::set-output name=package::$(basename ~/rpmbuild/RPMS/x86_64/webhook-${{ steps.version.outputs.version }}-*.x86_64.rpm)"
+        echo "::set-output name=package_fullpath::$(ls ~/rpmbuild/RPMS/x86_64/webhook-${{ steps.version.outputs.version }}-*.x86_64.rpm)"
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        release_name: Release ${{ steps.version.outputs.version }}
+        draft: false
+        prerelease: false
+    - name: Upload Release Package
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.artifacts.outputs.package_fullpath }}
+        asset_name: ${{ steps.artifacts.outputs.package }}
+        asset_content_type: application/octet-stream
