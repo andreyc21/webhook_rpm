@@ -26,7 +26,20 @@ cp %{SOURCE1} %{buildroot}/usr/lib/systemd/system/%{name}.service
 %attr(755, root, root) /usr/sbin/%{name}
 %attr(644, root, root) /usr/lib/systemd/system/%{name}.service
 
-%clean
+%post 
+if [ $1 -eq 1 ] && [ -x "/usr/lib/systemd/systemd-update-helper" ]; then 
+    # Initial installation 
+    /usr/lib/systemd/systemd-update-helper install-system-units webhook.service || : 
+fi 
 
-%post
-#chmod 755 -R /opt/${PKG_NAME}
+%preun 
+if [ $1 -eq 0 ] && [ -x "/usr/lib/systemd/systemd-update-helper" ]; then 
+    # Package removal, not upgrade 
+    /usr/lib/systemd/systemd-update-helper remove-system-units webhook.service || : 
+fi
+
+%postun 
+if [ $1 -ge 1 ] && [ -x "/usr/lib/systemd/systemd-update-helper" ]; then 
+    # Package upgrade, not uninstall 
+    /usr/lib/systemd/systemd-update-helper mark-restart-system-units webhook.service || : 
+fi
