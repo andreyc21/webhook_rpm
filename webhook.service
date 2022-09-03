@@ -1,10 +1,11 @@
 [Unit]
-Description= server daemon
+Description=Small server for creating HTTP endpoints (hooks)
 After=network.target
+ConditionPathExists=/etc/webhook.conf
 
 [Service]
 Type=notify
-ExecStart=/usr/sbin/sshd -D $OPTIONS
+ExecStart=/usr/bin/webhook -nopanic -hooks /etc/webhook.conf
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure
